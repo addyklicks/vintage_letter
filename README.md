@@ -53,6 +53,13 @@ Open:
 ```
 - Then ensure your backend allows CORS from your frontend domain.
 
+## Troubleshooting
+
+- If you see: `Backend did not return JSON` or `returned HTML, not JSON`
+  - Your frontend is likely calling the wrong API origin (for example `github.io/api/...`).
+  - Set `window.VINTAGE_API_BASE` to your deployed backend URL.
+  - Confirm `https://your-backend-domain.com/api/health` returns JSON.
+
 ## API Endpoints
 
 - `GET /api/health`

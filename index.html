@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="vintage-api-base" content="" />
     <title>Vintage Letter Reveal</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -319,6 +320,7 @@
       /*
         Optional for static hosting:
         window.VINTAGE_API_BASE = "https://your-backend-domain.com";
+        or set: <meta name="vintage-api-base" content="https://your-backend-domain.com" />
       */
       window.VINTAGE_API_BASE = window.VINTAGE_API_BASE || "";
 
@@ -335,7 +337,8 @@
 
       let isMuted = false;
       let otpSessionId = "";
-      const apiBase = String(window.VINTAGE_API_BASE || "").trim();
+      const metaApiBase = document.querySelector('meta[name="vintage-api-base"]')?.content || "";
+      const apiBase = String(window.VINTAGE_API_BASE || metaApiBase || "").trim();
       bgAudio.volume = 0.32;
 
       function buildApiUrl(pathname) {
@@ -351,9 +354,10 @@
       }
 
       async function apiRequest(pathname, options = {}) {
+        const url = buildApiUrl(pathname);
         let response;
         try {
-          response = await fetch(buildApiUrl(pathname), options);
+          response = await fetch(url, options);
         } catch (error) {
           throw new Error(
             `Cannot reach backend API. ${
@@ -369,7 +373,13 @@
           try {
             data = JSON.parse(rawText);
           } catch (error) {
-            throw new Error("Backend did not return JSON. Check API route mapping and backend deployment.");
+            const startsWithHtml = rawText.trim().toLowerCase().startsWith("<!doctype html") || rawText.trim().startsWith("<");
+            if (startsWithHtml) {
+              throw new Error(
+                `API URL ${url} returned HTML, not JSON. Set window.VINTAGE_API_BASE to your backend URL (for example Render/Railway backend domain).`
+              );
+            }
+            throw new Error(`Backend did not return JSON from ${url}. Check API route mapping and backend deployment.`);
           }
         }
 
