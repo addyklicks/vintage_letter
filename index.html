@@ -292,6 +292,7 @@
               Verify & Reveal
             </button>
             <p id="statusMsg" class="min-h-[1.4rem] text-center text-sm text-[#613f21]"></p>
+            <p id="apiHint" class="text-center text-[0.7rem] tracking-[0.08em] text-[#6f5130]/90"></p>
           </form>
         </div>
 
@@ -333,6 +334,7 @@
       const bgAudio = document.getElementById("bgAudio");
       const unlockButton = document.getElementById("unlockButton");
       const requestOtpButton = document.getElementById("requestOtpButton");
+      const apiHint = document.getElementById("apiHint");
       const letterContent = document.getElementById("letterContent");
 
       let isMuted = false;
@@ -366,25 +368,25 @@
           );
         }
 
+        const contentType = response.headers.get("content-type") || "";
         const rawText = await response.text();
+        const trimmedText = rawText.trim();
         let data = {};
 
-        if (rawText) {
+        if (trimmedText) {
           try {
-            data = JSON.parse(rawText);
+            data = JSON.parse(trimmedText);
           } catch (error) {
-            const startsWithHtml = rawText.trim().toLowerCase().startsWith("<!doctype html") || rawText.trim().startsWith("<");
-            if (startsWithHtml) {
-              throw new Error(
-                `API URL ${url} returned HTML, not JSON. Set window.VINTAGE_API_BASE to your backend URL (for example Render/Railway backend domain).`
-              );
-            }
-            throw new Error(`Backend did not return JSON from ${url}. Check API route mapping and backend deployment.`);
+            const preview = trimmedText.slice(0, 140).replace(/\s+/g, " ");
+            const previewSuffix = trimmedText.length > 140 ? "..." : "";
+            throw new Error(
+              `API ${url} returned non-JSON (status ${response.status}, content-type: ${contentType || "unknown"}). Preview: ${preview}${previewSuffix}`
+            );
           }
         }
 
         if (!response.ok) {
-          throw new Error(data.message || `API request failed with status ${response.status}.`);
+          throw new Error(data.message || `API ${url} failed with status ${response.status}.`);
         }
 
         return data;
@@ -535,6 +537,9 @@
       });
 
       setMuteLabel();
+      if (apiHint) {
+        apiHint.textContent = `API: ${apiBase || "same-origin (/api/...)"}`;
+      }
       loadLetterContent();
     </script>
   </body>

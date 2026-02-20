@@ -59,6 +59,7 @@ Open:
   - Your frontend is likely calling the wrong API origin (for example `github.io/api/...`).
   - Set `window.VINTAGE_API_BASE` to your deployed backend URL.
   - Confirm `https://your-backend-domain.com/api/health` returns JSON.
+  - Hard refresh after deployment to clear cached JS.
 
 ## API Endpoints
 
