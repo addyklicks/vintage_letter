@@ -11,6 +11,7 @@ const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || process.env.TG_BOT_TOKEN || "").trim();
 const FIXED_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || "").trim();
+const ALLOWED_ORIGIN = String(process.env.ALLOWED_ORIGIN || "").trim();
 const OTP_TTL_MS = Number(process.env.OTP_TTL_MS || 300000);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5);
 const TELEGRAM_API_BASE = BOT_TOKEN ? `https://api.telegram.org/bot${BOT_TOKEN}` : "";
@@ -22,6 +23,26 @@ let cachedBotUserId = "";
 app.use(express.json());
 app.use(express.static(__dirname));
 
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+
+  if (ALLOWED_ORIGIN === "*") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+  } else if (ALLOWED_ORIGIN && origin && origin === ALLOWED_ORIGIN) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  return next();
+});
+
 function hash(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
@@ -32,6 +53,10 @@ function generateOtp() {
 
 function validateBotToken() {
   return BOT_TOKEN.length > 0;
+}
+
+function hasValidBotTokenPattern() {
+  return /^\d+:[A-Za-z0-9_-]{25,}$/.test(BOT_TOKEN);
 }
 
 function cleanExpiredSessions() {
@@ -136,6 +161,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     tokenConfigured: validateBotToken(),
+    tokenPatternValid: hasValidBotTokenPattern(),
     fixedChatConfigured: Boolean(FIXED_CHAT_ID)
   });
 });
@@ -145,6 +171,12 @@ app.get("/api/bot/chat-id", async (_req, res) => {
     return res.status(500).json({
       ok: false,
       message: "Bot token missing. Set TG_BOT_TOKEN or TELEGRAM_BOT_TOKEN in .env"
+    });
+  }
+  if (!hasValidBotTokenPattern()) {
+    return res.status(500).json({
+      ok: false,
+      message: "Bot token format looks invalid. Remove quotes/spaces and set raw token value in environment."
     });
   }
 
@@ -161,6 +193,12 @@ app.post("/api/request-otp", async (req, res) => {
     return res.status(500).json({
       ok: false,
       message: "Bot token missing. Set TG_BOT_TOKEN or TELEGRAM_BOT_TOKEN in .env"
+    });
+  }
+  if (!hasValidBotTokenPattern()) {
+    return res.status(500).json({
+      ok: false,
+      message: "Bot token format looks invalid. Remove quotes/spaces and set raw token value in environment."
     });
   }
 

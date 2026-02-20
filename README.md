@@ -36,6 +36,18 @@ Open:
 
 - `http://localhost:3000`
 
+## Hosting Notes
+
+- OTP requires a running backend (`server.js`). Static-only hosting (for example plain GitHub Pages) cannot send OTP by itself.
+- If frontend and backend are on different domains, set this before the main app script in `index.html`:
+
+```html
+<script>
+  window.VINTAGE_API_BASE = "https://your-backend-domain.com";
+</script>
+```
+- Then ensure your backend allows CORS from your frontend domain.
+
 ## API Endpoints
 
 - `GET /api/health`

@@ -334,6 +334,12 @@ Adi           </p>
     <audio id="bgAudio" loop preload="auto" src="https://assets.mixkit.co/music/preview/mixkit-lost-in-dreams-abstract-chill-3101.mp3"></audio>
 
     <script>
+      /*
+        Optional for static hosting:
+        window.VINTAGE_API_BASE = "https://your-backend-domain.com";
+      */
+      window.VINTAGE_API_BASE = window.VINTAGE_API_BASE || "";
+
       const otpForm = document.getElementById("otpForm");
       const otpInput = document.getElementById("otpInput");
       const statusMsg = document.getElementById("statusMsg");
@@ -346,21 +352,63 @@ Adi           </p>
 
       let isMuted = false;
       let otpSessionId = "";
+      const apiBase = String(window.VINTAGE_API_BASE || "").trim();
       bgAudio.volume = 0.32;
+
+      function buildApiUrl(pathname) {
+        if (!apiBase) {
+          return pathname;
+        }
+
+        try {
+          return new URL(pathname, apiBase.endsWith("/") ? apiBase : `${apiBase}/`).toString();
+        } catch (error) {
+          throw new Error("Invalid API base URL. Set window.VINTAGE_API_BASE to a valid https:// backend URL.");
+        }
+      }
+
+      async function apiRequest(pathname, options = {}) {
+        let response;
+        try {
+          response = await fetch(buildApiUrl(pathname), options);
+        } catch (error) {
+          throw new Error(
+            `Cannot reach backend API. ${
+              apiBase ? "Check window.VINTAGE_API_BASE and backend CORS." : "Deploy backend or set window.VINTAGE_API_BASE."
+            }`
+          );
+        }
+
+        const rawText = await response.text();
+        let data = {};
+
+        if (rawText) {
+          try {
+            data = JSON.parse(rawText);
+          } catch (error) {
+            throw new Error("Backend did not return JSON. Check API route mapping and backend deployment.");
+          }
+        }
+
+        if (!response.ok) {
+          throw new Error(data.message || `API request failed with status ${response.status}.`);
+        }
+
+        return data;
+      }
 
       async function verifyOTP(code) {
         if (!otpSessionId) {
           throw new Error("Request OTP first.");
         }
 
-        const response = await fetch("/api/verify-telegram-otp", {
+        const data = await apiRequest("/api/verify-telegram-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code, sessionId: otpSessionId })
         });
-        const data = await response.json();
 
-        if (!response.ok || !data.valid) {
+        if (!data.valid) {
           throw new Error(data.message || "Invalid OTP. Please try again.");
         }
 
@@ -374,14 +422,13 @@ Adi           </p>
         otpSessionId = "";
 
         try {
-          const response = await fetch("/api/request-otp", {
+          const data = await apiRequest("/api/request-otp", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({})
           });
-          const data = await response.json();
 
-          if (!response.ok || !data.ok || !data.sessionId) {
+          if (!data.ok || !data.sessionId) {
             throw new Error(data.message || "Failed to send OTP.");
           }
 
