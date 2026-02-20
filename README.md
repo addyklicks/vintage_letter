@@ -36,6 +36,11 @@ Open:
 
 - `http://localhost:3000`
 
+## Edit Letter Content
+
+- Update only `letter-content.html` for your main letter text.
+- `index.html` loads this file automatically into the letter section.
+
 ## Hosting Notes
 
 - OTP requires a running backend (`server.js`). Static-only hosting (for example plain GitHub Pages) cannot send OTP by itself.
